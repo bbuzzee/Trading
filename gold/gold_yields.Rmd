@@ -1,0 +1,83 @@
+---
+title: "Dollar-RealYields"
+author: "Ben Buzzee"
+date: "March 26, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(vars)
+library(xts)
+
+gold <- read.csv("gold.csv", na.strings = ".")
+yields <- read.csv("real_yields.csv")
+dollar <- read.csv("dollar_daily.csv", na.strings = ".")
+
+df <- inner_join(yields, gold, by = "DATE") 
+
+df <- left_join(df, dollar, by = "DATE")
+
+colnames(df) <- c("date", "yield", "gold_price", "dollar")
+
+df <- df %>% filter(!is.na(gold_price) & !is.na(dollar))
+# df$date <- as.Date(df$date, format = "%Y-%d-%m")
+df$date <- as.Date(format(df$date, format = "%Y-%m-%d"))
+
+df_ts <- as.xts(df[,-1], order.by = df$date)
+
+```
+
+
+```{r}
+plot.xts(df_ts$yield, grid.ticks.on = "years", type = "l")
+plot.xts(df_ts$dollar, grid.ticks.on = "years", type = "l")
+plot.xts(df_ts$gold, grid.ticks.on = "years", type = "l")
+```
+```{r}
+
+par(mfrow = c(2,2))
+
+acf(df$gold_price, lag.max = 1000)
+pacf(df$gold_price)
+
+
+acf(df$yield, lag.max = 1000)
+pacf(df$yield, lag.max = 1000)
+```
+
+```{r}
+ccf(x = df$dollar, y = df$gold_price, lag.max = 100)
+```
+
+
+
+
+
+
+
+
+```{r}
+VARselect(df[,-1])
+
+var_fit <- VAR(df[,-1], p = 2)
+
+plot(var_fit$varresult$dollar$residuals)
+
+
+summary(var_fit$varresult$gold_price)
+
+fitted <- xts(fitted(var_fit$varresult$gold_price), order.by = df$date[-c(1,2)])
+
+plot.xts(df_ts$gold[-c(1,2)], grid.ticks.on = "years", type = "o")
+points(fitted, col = "red")
+
+
+
+```
+
+```{r}
+plot(predict(var_fit, n.ahead = 5))
+```
+

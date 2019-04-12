@@ -1,0 +1,122 @@
+---
+title: "Trade-Weighted Dollar vs Gold"
+author: "Ben Buzzee"
+date: "March 7, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(astsa)
+```
+
+Here I'm going to look at the relationship between the trade-weighted USD and the price of one ounce of gold.
+```{r data}
+dollar <- read.csv("dollar.csv")
+gold <- read.csv("gold.csv", na.strings = ".")
+gdp <- 
+
+dollar <- dollar %>% separate(DATE, into = c("year", "month", "day"))
+gold <- gold %>% separate(DATE, into = c("year", "month", "day")) %>% filter()
+
+
+
+df <- left_join(dollar, gold, on = c("year", "month", "day") )
+
+colnames(df)[4:5] <- c("dollar_value", "gold_value")
+
+
+df <- df %>% filter(!is.na(gold_value))
+
+
+
+```
+
+
+### The Raw Data
+
+First we will inspect the raw data.
+
+```{r}
+plot(ts(df$dollar_value, start = c(1995, 1), frequency = 52), main = "Trade Weighted USD Value", ylab = "Value")
+plot(ts(df$gold_value, start = c(1995, 1), frequency = 52), main = "Value of 1 oz of gold, USD", ylab = "Value")
+```
+
+Since the variance seems to change over time with gold, we probably want to work with the log transformed price of gold:
+
+```{r}
+
+log_gold <- log(df$gold_value)
+# log_dollar <- log(df$dollar_value)
+
+plot(ts(log_gold, start = c(1995, 1), frequency = 52), main = "Value of 1 oz of gold, USD, Log Transformed", ylab = "Value")
+# plot(ts(log_dollar, start = c(1995, 1), frequency = 52), main = "Trade Weighted USD Value", ylab = "Value")
+```
+
+Now although there is a clear trend, the variance around the trend seems more constant. Next we can look at the ACF and PACFs:
+
+
+```{r autocor, fig.align='center', include = TRUE}
+
+par(mfrow = c(2,2))
+acf(df$dollar_value, lag.max = 1000, main = "dollar")
+pacf(df$dollar_value, lag.max = 1000, main = "dollar")
+
+acf(log_gold, lag.max = 1000, main = "gold")
+pacf(log_gold, lag.max = 1000, main = "gold")
+```
+
+Both the dollar and gold ACF plots exhibit long periods of high correlation. Since the correlations are high, we might want to look at first differences (lower levels of correlation would imply we use fractional differencing). First lets look at the differenced time series:
+
+
+
+
+```{r}
+
+
+diff_gld <- diff(log(df$gold))
+diff_dollar <- diff(df$dollar_value)
+
+
+plot(ts(diff_gld), main = "First Difference of Log Gold")
+plot(ts(diff_dollar), main = "First Difference of Dollar")
+```
+Both of the above plots seem moderately well behaved. We could test for stationarity now. Next we can check the acf and pacf plots for signals in the differenced data:
+
+```{r}
+
+par(mfrow = c(2,2))
+acf(diff_gld, lag.max = 50)
+pacf(diff_gld, lag.max = 100)
+
+
+acf(diff_dollar, lag.max = 50)
+pacf(diff_dollar, lag.max = 100)
+```
+
+
+
+Next we can look at correlations. Note: diff_gld is log transformed now.
+
+```{r}
+
+fit <- lm(diff_gld ~ diff_dollar)
+summary(fit)
+
+plot(diff_dollar, diff_gld)
+abline(fit, col = "red")
+
+
+
+```
+
+Interpretation of the slope: A 1 unit increase in dollar on average results in a `r round((exp(-.0137) - 1)*100, 2)` percent change in gold.
+
+```{r}
+ccf(diff_dollar, diff_gld, lag.max = 1300, main = "Dollar vs Gold", xlab = "Lag (Weeks)")
+```
+
+It looks like at lag 0, a strong dollar is weakly negatively correlated with the price of gold.
+
+

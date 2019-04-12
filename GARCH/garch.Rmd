@@ -1,0 +1,118 @@
+---
+title: "GARCH"
+author: "Ben Buzzee"
+date: "April 11, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+library(xts)
+library(PerformanceAnalytics)
+library(tidyverse)
+library(quantmod)
+install.packages("rugarch")
+```
+
+# The Data and Returns
+
+First, we need prices. For that we will use the quantmod package and getSymbols().
+
+```{r cars}
+getSymbols("SPY", src = "yahoo")
+
+sp500 <- SPY$SPY.Adjusted
+
+plot(sp500)
+```
+
+But we aren't interested in price, we are interested in returns. Returns are the difference between the current price and previous price, divided by the previous price.
+
+```{r pressure, echo=FALSE}
+sp500ret <- CalculateReturns(sp500)[-1]
+
+plot(sp500ret)
+```
+
+We see that periods with large absolute returns are clustered in groups. In other words, we see volatility clusters. Note: standard deviations on daily returns gives us daily volatility, or an average daily distance a return is from the mean. To annualize daily volatilty, we need to multiply it by the root of the number of trading days in a year. The chart.RollingPerformance function estimates daily volatility using a window length equal to _width_ and annualizes it by multiplying by the root of _scale_. 
+
+
+```{r}
+# Showing two plots on the same figure
+par(mfrow=c(2,1)) 
+
+# Compute the rolling 1 month estimate of annualized volatility
+chart.RollingPerformance(R = sp500ret, width = 22,
+     FUN = "sd.annualized", scale = 252, main = "One month rolling volatility")
+
+# Compute the rolling 3 months estimate of annualized volatility
+chart.RollingPerformance(R = sp500ret, width = 66,
+     FUN = "sd.annualized", scale = 252, main = "Three months rolling volatility")
+```
+
+# The Garch Model
+
+We can quickly explore the concept of clustered volatility by looking at the errors around the sample average. We can see that our errors are positively correlated.
+```{r}
+# Compute the mean daily return
+m <- mean(sp500ret)
+
+# Define the series of prediction errors
+e <- sp500ret - m
+
+# Plot the absolute value of the prediction errors
+par(mfrow = c(2,1))
+plot(abs(e))
+
+# Plot the acf of the absolute prediction errors
+acf(abs(e))
+```
+
+Next, lets assume alpha, beta, and omega are fitted variance parameters and we are using the sample mean as our predicted value. Lets compare our modeled variance to the true variance. Variance is estimated one time step ahead.
+```{r}
+# from chapter 1 slides page 26
+alpha <- 0.1
+beta <- 0.8
+omega <- var(sp500ret)*(1-alpha-beta)
+
+e <- sp500ret - mean(sp500ret) # Constant mean
+e2 <- e^2
+
+nobs <- length(sp500ret)
+predvar <- rep(NA, nobs)
+
+
+# Compute the predicted variances
+
+# Initialize the process at the sample variance
+predvar[1] <- var(sp500ret)
+
+# Loop starting at 2 because of the lagged predictor
+for (t in 2:nobs){
+# GARCH(1,1) equation
+predvar[t] <- omega + alpha * e2[t - 1] + beta * predvar[t-1]
+}
+
+# Create annualized predicted volatility
+ann_predvol <- xts(sqrt(252) * sqrt(predvar), order.by = time(sp500ret))
+
+# Plot the annual predicted volatility in 2008 and 2009
+par(mfrow = c(2,1))
+plot(ann_predvol, main = "Ann. S&P 500 vol")
+plot(abs(e))
+```
+
+We see that if we were able to obtain the correct variance parameters, our GARCH model would appear to adequately capture the variance structure of actual SPY returns.
+
+
+
+# RUGARCH Package
+
+Three steps to using a garch model:
+
+* Specify the mean, variance (sigma), and distribution or e using ugarchspec()
+* Fit the model using maximum likelihood using ugarchfit()
+* Forecast to make volatility predictions using ugarchforecast()
+
+left off pg 33 chapter 1
