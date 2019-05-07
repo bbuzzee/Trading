@@ -1,0 +1,200 @@
+---
+title: "Basic Vol Strategy"
+author: "Ben Buzzee"
+date: "April 12, 2019"
+output: html_document
+---
+
+
+This document outlines and analyzing the performance of some very basic volatility trading strategies. The idea is to use certain indicators to go short volatility.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(downloader)
+require(quantmod)
+require(PerformanceAnalytics)
+require(TTR)
+require(data.table)
+library(vars)
+```
+
+# Tools of the Trade
+
+
+## VIX
+
+The VIX is the expected volatility over the next 30 days, in terms of an annualized percentage. It is derived from the prices of options for the S&P 500. To get the expected volatility for the month, multiply the VIX by sqrt(12). 
+
+## VIX3M and VIX6M
+
+These are like VIX except they represent the expected volatility for the next three and six months respectively, annualized.
+
+
+# Ratios as Indicators
+
+https://quantstrattrader.wordpress.com/2018/01/24/which-implied-volatility-ratio-is-best/
+
+We will use the ratio of VIX3M/VIX6M as one of our indicators to buy. When this ratio is less than one, it means the expected volatility in the next 3 months is less than what the market expected in the next six. This ratio was chosen via backtesting.
+
+
+```{r data, include = FALSE}
+
+
+download("http://www.cboe.com/publish/scheduledtask/mktdata/datahouse/vix3mdailyprices.csv", 
+         destfile="vxvData.csv")
+
+# changes vxmt to vix6m to get current data
+download("http://www.cboe.com/publish/scheduledtask/mktdata/datahouse/vix6mdailyprices.csv", 
+         destfile="vxmtData.csv")
+
+
+vxv <- xts(read.zoo("vxvData.csv", header=TRUE, sep=",", format="%m/%d/%Y", skip=2))
+vxmt <- xts(read.zoo("vxmtData.csv", header=TRUE, sep=",", format="%m/%d/%Y", skip=2))
+
+
+tail(vxv)
+
+
+getSymbols("SPY", src = "yahoo")
+getSymbols("ZIV", src = "yahoo")
+getSymbols("SVXY", src = "yahoo")
+getSymbols("VXX", src = "yahoo")
+getSymbols("UPRO")
+getSymbols("TMF")
+getSymbols("XIVH")
+
+
+```
+
+
+
+```{r rets, include = FALSE}
+
+svxyRets <- CalculateReturns(SVXY$SVXY.Adjusted)
+zivRets <- CalculateReturns(ZIV$ZIV.Adjusted)
+uproRets <- CalculateReturns(UPRO$UPRO.Adjusted)
+tmfRets <- CalculateReturns(TMF$TMF.Adjusted)
+xivhRets <- CalculateReturns(Cl(XIVH))
+
+# use closing values
+vix3mVxmt <- Cl(vxv)/Cl(vxmt)
+
+# function to aggregate return metrics
+stratStats <- function(rets) {
+  stats <- rbind(table.AnnualizedReturns(rets), maxDrawdown(rets))
+  stats[5,] <- stats[1,]/stats[4,]
+  stats[6,] <- stats[1,]/UlcerIndex(rets)
+  rownames(stats)[4] <- "Worst Drawdown"
+  rownames(stats)[5] <- "Calmar Ratio"
+  rownames(stats)[6] <- "Ulcer Performance Index"
+  return(stats)
+}
+
+# ========= SIGNAL ================#
+maLong <- SMA(vix3mVxmt, 60)
+
+
+sigLong <- vix3mVxmt < 1 & vix3mVxmt < maLong
+
+#============= RETURNS ============
+
+# CBOE updates data at 9:45am EST on a one day lag.
+# So if we check at 9:45 and the signal fires, the signal was for yesterday.
+# So we can only buy at some point during the next day, and for simplicity we choose EOD.
+# We only get returns 
+
+
+retsShort <- zivRets
+# retsVxx<-  lag(sigVxx, 1) * vxxRets
+retsLongZiv <- lag(sigLong, 2) * svxyRets
+retsLongSvxy <-   lag(sigLong, 2) * xivhRets
+retsCombo <- lag(sigLong, 2) * (.5*svxyRets + .5*zivRets)
+retsUpro <- .5*uproRets + .5*tmfRets
+retsPort <- .5*retsUpro + .5*retsLongSvxy
+
+ retsCombo <- tail(retsCombo, 300)
+```
+
+
+
+```{r}
+tail(sigLong)
+```
+
+
+```{r perf}
+compare <- na.omit(cbind(retsPort, retsLongZiv, retsLongSvxy, retsCombo))
+colnames(compare) <- c("Port", "SvxyStrat", "xivHStrat", "ComboStrat")
+charts.PerformanceSummary(compare)
+knitr::kable(stratStats(compare))
+
+# chart.RollingPerformance(R = retsCombo, width = 22, fun = Return.annualized)
+
+
+```
+
+
+
+```{r}
+chart.CumReturns(svxyRets)
+points(sigLong*25, col = "red", pch = 15)
+```
+
+```{r}
+# http://volatilitymadesimple.com/chasing-the-volatility-risk-premium/
+
+
+
+# rolling 10 day historical volatility
+spyRets <- CalculateReturns(Ad(SPY))
+spyVol10 <- rollapply(spyRets, width = 5, FUN = sd.annualized)
+spyVol10 <- spyVol10*100
+
+
+df <- merge(Cl(VIX), spyVol10, join = "inner")
+colnames(df) <- c("vix", "spyvol")
+
+
+rebal_bi <- seq(from = min(index(df)), to = max(index(df)), by = 30*6)
+rebal_qtr <- seq(from = min(index(df)), to = max(index(df)), by = 30*3)
+
+# Soy represented the realaized volatility of the last 10 days
+# VIX is the priced-in vol for next 30
+
+plot(df, legend.loc = "topright", grid.ticks.on = "year")
+
+sig <- SMA(df$vix - df$spyvol, n = 10) > 0
+
+
+retsSplit <- lag(sig, 2)*zivRets
+retsSvxy <- lag(sig, 2)*svxyRets 
+vxxRet2 <- lag(!sig, 2)*vxxRets
+
+
+compare2 <- na.omit(cbind(retsSplit, retsSvxy, vxxRet2))
+compare2 <- head(compare2, 800)
+
+charts.PerformanceSummary(compare2)
+stratStats(compare2)
+
+
+```
+
+
+```{r}
+# REBALANCED VERSION
+
+# "safe" SIV base line returns
+retsLongZiv
+
+# Dangerous SVXY returns
+retsSvxy
+
+port <- cbind(retsLongZiv, retsSvxy)
+colnames(port) <- c("ziv", "svxy")
+# GOAL: Juice safe returns with SVXY
+
+rets <- Return.portfolio(port, weights = c(.7,.3), rebalance_on = "years")
+
+stratStats(rets)
+```
+

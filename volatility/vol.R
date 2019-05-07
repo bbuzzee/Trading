@@ -6,32 +6,23 @@ require(data.table)
 
 download("http://www.cboe.com/publish/scheduledtask/mktdata/datahouse/vix3mdailyprices.csv", 
          destfile="vxvData.csv")
-
-# changes vxmt to vix6m to get current data
 download("http://www.cboe.com/publish/ScheduledTask/MktData/datahouse/vix6mdailyprices.csv", 
          destfile="vxmtData.csv")
 
-VIX <- fread("http://www.cboe.com/publish/scheduledtask/mktdata/datahouse/vixcurrent.csv", skip = 1)
-VIXdates <- VIX$Date
-VIX$Date <- NULL; VIX <- xts(VIX, order.by=as.Date(VIXdates, format = '%m/%d/%Y'))
+
 
 
 vxv <- xts(read.zoo("vxvData.csv", header=TRUE, sep=",", format="%m/%d/%Y", skip=2))
 vxmt <- xts(read.zoo("vxmtData.csv", header=TRUE, sep=",", format="%m/%d/%Y", skip=2))
 
-
-getSymbols("ZIV", src = "yahoo")
 getSymbols("SVXY", src = "yahoo")
+getSymbols("SPY")
+getSymbols("VXX")
 
-# use ZIV instead of xiv
-xivRets <- CalculateReturns(SVXY$SVXY.Adjusted)
-#xivRets <- CalculateReturns(ZIV$ZIV.Adjusted)
+spyRets <- Return.calculate(Cl(SPY))
+svxyRets <- Return.calculate(Cl(SVXY))
+vxxRets <- Return.calculate(Cl(VXX))
 
-
-#============================================================
-
-vixVix3m <- Cl(VIX)/Cl(vxv)
-vixVxmt <- Cl(VIX)/Cl(vxmt)
 vix3mVxmt <- Cl(vxv)/Cl(vxmt)
 
 stratStats <- function(rets) {
@@ -44,20 +35,46 @@ stratStats <- function(rets) {
   return(stats)
 }
 
-# changed from 60 day to 90 date MA
-maShort <- SMA(vixVix3m, 90)
-maMed <- SMA(vixVxmt, 90)
-maLong <- SMA(vix3mVxmt, 90)
+# QUANT R TRADER
+maLong <- SMA(vix3mVxmt, 60)
+ma125 <- SMA(vix3mVxmt, 125)
+ma150 <- SMA(vix3mVxmt, 150)
 
-sigShort <- vixVix3m < 1 & vixVix3m < maShort
-sigMed <- vixVxmt < 1 & vixVxmt < maMed 
-sigLong <- vix3mVxmt < 1 & vix3mVxmt < maLong 
+ma_avg <- mean(c(maLong, ma125, ma150))
 
-retsShort <- lag(sigShort, 2) * xivRets 
-retsMed <- lag(sigMed, 2) * xivRets 
-retsLong <- lag(sigLong, 2) * xivRets
+svxyQR <- vix3mVxmt < 1 & vix3mVxmt < maLong 
+vxxQR <- vix3mVxmt > 1 & ma_avg > 1
 
-compare <- na.omit(cbind(retsShort, retsMed, retsLong))
-colnames(compare) <- c("Short", "Medium", "Long")
-charts.PerformanceSummary(compare)
+retsLong <- lag(svxyQR, 2) * svxyRets
+
+# retsLong <- tail(retsLong, 200)
+
+charts.PerformanceSummary(retsLong)
+stratStats(retsLong)
+tail(svxyQR)
+
+# TTO
+
+vol2 <- rollapply(Cl(SPY), FUN = sd.annualized, width = 2)
+
+df <- merge(vxv, vol2, join = "inner")
+colnames(df) <- c("", "", "", "vix3m", "vol2day")
+
+sigSvxyTTO <- EMA(df$vix3m - df$vol2day, n = 5) > 1 
+sigVxxTTO <- EMA(df$vix3m - df$vol2day, n = 5) < 1
+
+retsTTO <- lag(sigSvxyTTO, 1) * svxyRets   # + lag(!sigSvxyTTO, 1) * vxxRets
+# retsTTO <- tail(retsTTO, 200)
+compare <- na.omit(cbind(spyRets, retsTTO))
 stratStats(compare)
+charts.PerformanceSummary(compare)
+
+tail(sigSvxyTTO)
+
+# add rolling sd smaller than something as an indicator
+chart.RollingPerformance(retsTTO, width = 22*6,  FUN = 'Return.annualized')
+
+
+tail(sigSvxyTTO)
+
+sum(lag(sigSvxyTTO) != sigSvxyTTO, na.rm = T)/2607*360

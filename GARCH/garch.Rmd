@@ -12,7 +12,7 @@ library(xts)
 library(PerformanceAnalytics)
 library(tidyverse)
 library(quantmod)
-install.packages("rugarch")
+
 ```
 
 # The Data and Returns
@@ -47,7 +47,7 @@ chart.RollingPerformance(R = sp500ret, width = 22,
      FUN = "sd.annualized", scale = 252, main = "One month rolling volatility")
 
 # Compute the rolling 3 months estimate of annualized volatility
-chart.RollingPerformance(R = sp500ret, width = 66,
+chart.RollingPerformance(R = sp500ret, width = 22*6,
      FUN = "sd.annualized", scale = 252, main = "Three months rolling volatility")
 ```
 
