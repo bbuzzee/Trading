@@ -17,11 +17,16 @@ vxmt <- xts(read.zoo("vxmtData.csv", header=TRUE, sep=",", format="%m/%d/%Y", sk
 
 getSymbols("SVXY", src = "yahoo")
 getSymbols("SPY")
-getSymbols("VXX")
+getSymbols("XIVH")
+getSymbols("UPRO")
+getSymbols("TMF")
 
 spyRets <- Return.calculate(Cl(SPY))
 svxyRets <- Return.calculate(Cl(SVXY))
-vxxRets <- Return.calculate(Cl(VXX))
+xivhRets <- Return.calculate(Cl(XIVH))
+uproRets <- Return.calculate(Cl(UPRO))
+tmfRets <- Return.calculate(Cl(TMF))
+
 
 vix3mVxmt <- Cl(vxv)/Cl(vxmt)
 
@@ -37,20 +42,28 @@ stratStats <- function(rets) {
 
 # QUANT R TRADER
 maLong <- SMA(vix3mVxmt, 60)
-ma125 <- SMA(vix3mVxmt, 125)
-ma150 <- SMA(vix3mVxmt, 150)
+# ma125 <- SMA(vix3mVxmt, 125)
+# ma150 <- SMA(vix3mVxmt, 150)
 
-ma_avg <- mean(c(maLong, ma125, ma150))
+# ma_avg <- mean(c(maLong, ma125, ma150))
 
 svxyQR <- vix3mVxmt < 1 & vix3mVxmt < maLong 
 vxxQR <- vix3mVxmt > 1 & ma_avg > 1
 
-retsLong <- lag(svxyQR, 2) * svxyRets
+retsSvxy <- lag(svxyQR, 2) * svxyRets
+retsXivh <- lag(svxyQR, 2) * xivhRets
+retsLev <- .5*uproRets + .5*tmfRets
+retsPort <- .5*retsSvxy + .5*retsLev
 
-# retsLong <- tail(retsLong, 200)
+compare1 <- na.omit(cbind(retsSvxy, retsLev, retsPort, spyRets))
+names(compare1) <- c("SVXY", "UPRO", "Combo", "SPY")
 
-charts.PerformanceSummary(retsLong)
-stratStats(retsLong)
+compare1 <- tail(compare1, 200)
+charts.PerformanceSummary(compare1)
+stratStats(compare1)
+
+stratStats(retsSvxy)
+charts.PerformanceSummary(retsSvxy)
 tail(svxyQR)
 
 # TTO
@@ -75,6 +88,5 @@ tail(sigSvxyTTO)
 chart.RollingPerformance(retsTTO, width = 22*6,  FUN = 'Return.annualized')
 
 
-tail(sigSvxyTTO)
 
 sum(lag(sigSvxyTTO) != sigSvxyTTO, na.rm = T)/2607*360
