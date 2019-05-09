@@ -1,6 +1,6 @@
 require(downloader)
 require(quantmod)
-
+require(mailR)
 
 getSignal <- function(){
 
@@ -25,13 +25,30 @@ getSignal <- function(){
   
   svxyQR <- vix3mVxmt < 1 & vix3mVxmt < maLong
   
-  last_sig <- tail(svxyQR, 1)
+  last_sig <- tail(svxyQR, 5)
   
-  action <- ifelse(coredata(last_sig), "buy", "sell")
+  action <- ifelse(coredata(last_sig), "BUY", "SELL")
   
   
-  message <- paste0("The signal for ", index(last_sig), " is ", action,". ",  "You should ", action,  " by the end of the day ", index(last_sig) + 1)
-  return(message)
+   message <- paste0("The signal for ", index(last_sig), " is ", action,". ",  "You should ", action,  " by the end of the day ", index(last_sig) + 1)
+  
+  # table <- data.frame(Date = index(last_sig), "Action" = action)
+  return(table)
 }
 
 getSignal()
+
+
+sendSignal <- function(address = "benbuzzee@gmail.com"){
+  
+  send.mail(from = address,
+            to = address,
+            subject = "Daily Volatility Signal",
+            body = "message",
+            smtp = list(host.name = "aspmx.l.google.com", port = 25),
+            authenticate = FALSE,
+            send = TRUE)
+}
+
+
+sendSignal()

@@ -58,7 +58,7 @@ retsPort <- .5*retsSvxy + .5*retsLev
 compare1 <- na.omit(cbind(retsSvxy, retsLev, retsPort, spyRets))
 names(compare1) <- c("SVXY", "UPRO", "Combo", "SPY")
 
-compare1 <- tail(compare1, 200)
+# compare1 <- tail(compare1, 200)
 charts.PerformanceSummary(compare1)
 stratStats(compare1)
 
