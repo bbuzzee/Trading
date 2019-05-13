@@ -63,10 +63,10 @@ unrate12 <- SMA(df$cue, n = 12)
 # 
 signal <- !((df$cue> unrate12) & (df$SPY.Close < spySma10))
 
-stratRets <- lag(signal, 1) * (.5* uproRets + .5*tmfRets)
+stratRets <- lag(signal, 1) * spyRets
 
 stratStats(stratRets)
-stratStats(.5* uproRets + .5*tmfRets)
+stratStats(spyRets)
 charts.PerformanceSummary(stratRets)
 monyear(index(df))
 yearmon(df)

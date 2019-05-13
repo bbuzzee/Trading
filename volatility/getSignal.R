@@ -1,6 +1,7 @@
 require(downloader)
 require(quantmod)
 require(mailR)
+library(rJava)
 
 getSignal <- function(){
 
@@ -30,9 +31,9 @@ getSignal <- function(){
   action <- ifelse(coredata(last_sig), "BUY", "SELL")
   
   
-   message <- paste0("The signal for ", index(last_sig), " is ", action,". ",  "You should ", action,  " by the end of the day ", index(last_sig) + 1)
+  message <- paste0("The signal for ", index(last_sig), " is ", action,". ",  "You should ", action,  " by the end of the day ", index(last_sig) + 1)
   
-  # table <- data.frame(Date = index(last_sig), "Action" = action)
+  table <- data.frame(Date = index(last_sig), "Action" = action)
   return(table)
 }
 
