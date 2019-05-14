@@ -1,6 +1,8 @@
 require(downloader)
 require(quantmod)
 require(mailR)
+require(htmlTable)
+# mailR requires 32 bit R and java be installed
 
 getSignal <- function(){
 
@@ -30,25 +32,26 @@ getSignal <- function(){
   action <- ifelse(coredata(last_sig), "BUY", "SELL")
   
   
-   message <- paste0("The signal for ", index(last_sig), " is ", action,". ",  "You should ", action,  " by the end of the day ", index(last_sig) + 1)
-  
-  # table <- data.frame(Date = index(last_sig), "Action" = action)
-  return(table)
+  table <- data.frame(index(last_sig), action)
+  names(table) <- c("Date", "Action")
+  body <-htmlTable(table, rnames = FALSE)
+  return(body)
 }
 
-getSignal()
+# getSignal()
 
 
-sendSignal <- function(address = "benbuzzee@gmail.com"){
+sendSignal <- function(address = "benbuzzee@gmail.com", body = "message"){
   
   send.mail(from = address,
             to = address,
             subject = "Daily Volatility Signal",
-            body = "message",
+            body = body,
             smtp = list(host.name = "aspmx.l.google.com", port = 25),
             authenticate = FALSE,
+            html = TRUE,
             send = TRUE)
 }
 
 
-sendSignal()
+# sendSignal(body = getSignal())
