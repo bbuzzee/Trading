@@ -1,8 +1,12 @@
 require(downloader)
 require(quantmod)
 require(mailR)
+
 require(htmlTable)
 # mailR requires 32 bit R and java be installed
+
+library(rJava)
+
 
 getSignal <- function(){
 
@@ -32,10 +36,17 @@ getSignal <- function(){
   action <- ifelse(coredata(last_sig), "BUY", "SELL")
   
   
+
   table <- data.frame(index(last_sig), action)
   names(table) <- c("Date", "Action")
   body <-htmlTable(table, rnames = FALSE)
   return(body)
+
+  message <- paste0("The signal for ", index(last_sig), " is ", action,". ",  "You should ", action,  " by the end of the day ", index(last_sig) + 1)
+  
+  table <- data.frame(Date = index(last_sig), "Action" = action)
+  return(table)
+
 }
 
 # getSignal()
