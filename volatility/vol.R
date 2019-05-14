@@ -54,9 +54,9 @@ vxxQR <- vix3mVxmt > 1 & ma_avg > 1
 retsSvxy <- lag(svxyQR, 2) * svxyRets 
 retsXivh <- lag(svxyQR, 2) * xivhRets
 retsLev <- .5*uproRets + .5*tmfRets
-retsPort <- .5*retsTTO + .5*retsLev
+retsPort <- .5*retsTTO+ .5*retsLev
 
-compare1 <- na.omit(cbind(retsSvxy, retsLev, retsPort, spyRets))
+compare1 <- na.omit(cbind(retsTTO, retsLev, retsPort, spyRets))
 names(compare1) <- c("SVXY", "UPRO", "Vol-UPRO-TMF", "SPY")
 
 # compare1 <- tail(compare1, 300)
@@ -75,8 +75,8 @@ vol2 <- rollapply(Cl(SPY), FUN = sd.annualized, width = 2)
 df <- merge(vxv, vol2, join = "inner")
 colnames(df) <- c("", "", "", "vix3m", "vol2day")
 
-sigSvxyTTO <- EMA(df$vix3m - df$vol2day, n = 5) > 1 
-sigVxxTTO <- EMA(df$vix3m - df$vol2day, n = 5) < 1
+sigSvxyTTO <- EMA(df$vix3m - df$vol2day, n = 2) > 1 
+sigVxxTTO <- EMA(df$vix3m - df$vol2day, n = 2) < 1
 
 retsTTO <- lag(sigSvxyTTO, 2) * svxyOp   + lag(sigVxxTTO, 2) * vxxOp
 # retsTTO <- tail(retsTTO, 200)
