@@ -21,6 +21,8 @@ getSymbols("XIVH")
 getSymbols("UPRO")
 getSymbols("TMF")
 getSymbols("VXX")
+getSymbols("SSO")
+getSymbols("UBT")
 
 spyRets <- Return.calculate(Cl(SPY))
 svxyRets <- Return.calculate(Cl(SVXY))
@@ -28,8 +30,13 @@ xivhRets <- Return.calculate(Cl(XIVH))
 uproRets <- Return.calculate(Cl(UPRO))
 tmfRets <- Return.calculate(Cl(TMF))
 vxxRets <- Return.calculate(Cl(VXX))
+ssoRets <- Return.calculate(Cl(SSO))
+ubtRets <- Return.calculate(Cl(UBT))
 
 vix3mVxmt <- Cl(vxv)/Cl(vxmt)
+
+
+
 
 stratStats <- function(rets) {
   stats <- rbind(table.AnnualizedReturns(rets), maxDrawdown(rets))
@@ -53,10 +60,12 @@ vxxQR <- vix3mVxmt > 1 & ma_avg > 1
 
 retsSvxy <- lag(svxyQR, 2) * svxyRets 
 retsXivh <- lag(svxyQR, 2) * xivhRets
-retsLev <- .5*uproRets + .5*tmfRets
-retsPort <- .5*retsTTO+ .5*retsLev
+retsLev3 <- .5*uproRets + .5 * tmfRets
+retsLev2 <- .5*ssoRets + .5 * ubtRets
+retsPort3 <- .5*retsTTO + .5 * retsLev3
+retsPort2 <- .5*retsTTO + .5 * retsLev2
 
-compare1 <- na.omit(cbind(retsTTO, retsLev, retsPort, spyRets))
+compare1 <- na.omit(cbind(retsTTO, retsLev3, retsLev2, retsPort3, spyRets))
 names(compare1) <- c("SVXY", "UPRO", "Vol-UPRO-TMF", "SPY")
 
 # compare1 <- tail(compare1, 300)
@@ -78,7 +87,8 @@ colnames(df) <- c("", "", "", "vix3m", "vol2day")
 sigSvxyTTO <- EMA(df$vix3m - df$vol2day, n = 2) > 1 
 sigVxxTTO <- EMA(df$vix3m - df$vol2day, n = 2) < 1
 
-retsTTO <- lag(sigSvxyTTO, 2) * svxyOp   + lag(sigVxxTTO, 2) * vxxOp
+retsTTO <- lag(sigSvxyTTO, 2) * svxyOp #   +  lag(sigVxxTTO, 2) * vxxOp
+retsTTO <- lag(sigSvxyTTO, 2) * svxyOp #   +  lag(sigVxxTTO, 2) * vxxOp
 # retsTTO <- tail(retsTTO, 200)
 compare <- na.omit(cbind(spyRets, retsTTO))
 stratStats(compare)
@@ -86,38 +96,10 @@ charts.PerformanceSummary(compare)
 
 tail(sigSvxyTTO)
 
-# add rolling sd smaller than something as an indicator
-chart.RollingPerformance(retsTTO, width = 22*6,  FUN = 'Return.annualized')
-
-
-
-sum(lag(sigSvxyTTO) != sigSvxyTTO, na.rm = T)/2607*360
+sum(!sigSvxyTTO, na.rm = T)/length(sigSvxyTTO)*252
+sum(!svxyQR, na.rm = T)/length(svxyQR)*252
 
 
 
 
-# MOving Average SPY/UPRO Strategy
 
-getSymbols("SSO")
-maSpy30 <- SMA(Cl(SPY), 30)
-maSpy60 <- SMA(Cl(SPY), 60)
-maSpy200 <- SMA(Cl(SPY), 200)
-maSso200 <- SMA(Cl(SPY), 200)
-
-uproSig <- Cl(SPY) > maSpy200
-ssoSig <- Cl(SSO) > maSso200
-
-retsUpro200 <-  uproSig*uproRets
-retsSpy200 <- lag(uproSig,1)*uproRets 
-
-compare3 <- na.omit(cbind(retsUpro200, uproRets, spyRets, retsSpy200))
-
-stratStats(compare3)
-charts.PerformanceSummary(compare3)
-
-
-
-uprosig18 <- uproSig["2018"]
-uprorets18 <- uproRets["2017"]
-
-uprosig18*uprorets18

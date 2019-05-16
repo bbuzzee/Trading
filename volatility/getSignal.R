@@ -10,6 +10,9 @@ library(rJava)
 
 getSignal <- function(){
 
+  
+  
+  # ====================================== QUANTSTRATTRADER STRAT ======================================================
   # RETRIEVE THE DATA
   download("http://www.cboe.com/publish/scheduledtask/mktdata/datahouse/vix3mdailyprices.csv", 
            destfile="vxvData.csv")
@@ -34,18 +37,38 @@ getSignal <- function(){
   last_sig <- tail(svxyQR, 5)
   
   action <- ifelse(coredata(last_sig), "BUY", "SELL")
-  
-  
 
   table <- data.frame(index(last_sig), action)
-  names(table) <- c("Date", "Action")
-  body <-htmlTable(table, rnames = FALSE)
-  return(body)
-
-  message <- paste0("The signal for ", index(last_sig), " is ", action,". ",  "You should ", action,  " by the end of the day ", index(last_sig) + 1)
   
-  table <- data.frame(Date = index(last_sig), "Action" = action)
-  return(table)
+  
+  
+  
+  
+  #================================ TTO SIGNAL ===================================
+  
+  svxyOp <- CalculateReturns(Op(SVXY))
+  vxxOp <- CalculateReturns(Op(VXX))
+  
+  vol2 <- rollapply(Cl(SPY), FUN = sd.annualized, width = 2)
+  
+  df <- merge(vxv, vol2, join = "inner")
+  colnames(df) <- c("", "", "", "vix3m", "vol2day")
+  
+  sigSvxyTTO <- EMA(df$vix3m - df$vol2day, n = 2) > 1 
+
+  retsTTO <- lag(sigSvxyTTO, 2) * svxyOp #   +  lag(sigVxxTTO, 2) * vxxOp
+  
+  last_sig_tto <- tail(retsTTO, 5)
+  
+  action_tto  <- ifelse(coredata(last_sig_tto), "BUY", "SELL")
+  
+  table <- cbind(data.frame(index(last_sig_tto), action_tto), table)
+  
+  names(table) <- c("DateTTO", "ActionTTO", "DateQR", "ActionQR")
+  
+  body <- htmlTable(table, rnames = FALSE)
+  
+  return(body)
 
 }
 
@@ -65,4 +88,4 @@ sendSignal <- function(address = "benbuzzee@gmail.com", body = "message"){
 }
 
 
-# sendSignal(body = getSignal())
+sendSignal(body = getSignal())
