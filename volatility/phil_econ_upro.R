@@ -47,26 +47,48 @@ stratStats <- function(rets) {
 cue <- getFedData(tag = "UNRATE")
 cue <- xts(cue$value, order.by = cue$date)
 
+plot(cue,grid.ticks.on = "years")
+
 getSymbols("SPY")
 getSymbols("UPRO")
 uproRets <- Return.calculate(Cl(UPRO))
 spyRets <- Return.calculate(Cl(SPY))
 
+
+
+uproRets <- xts(read.zoo("UPROSIM.csv", header=TRUE, sep=",", format="%m/%d/%Y", index.column = 1))
+uproRets <- uproRets[,1]
+
+
+tmfRets <- xts(read.zoo("TMFSIM.csv", header=TRUE, sep=",", format="%m/%d/%Y"))
+tmfRets<- tmfRets [,1]
+
+
+
+
+
+
 df <- merge(Cl(SPY), cue, fill = NA )
 df <- na.locf(df)
 
 df <- df[index(df) > min(index(Cl(SPY))),]
-spySma10 <- SMA(df$SPY.Close, n = 10)
-unrate12 <- SMA(df$cue, n = 12)
+spySma10 <- SMA(df$SPY.Close, n = 22*12)
+unrate12 <- SMA(df$cue, n = 22*10)
 
 # Buy when unemployment is below its 12 mo moving average
 # 
-signal <- !((df$cue> unrate12) & (df$SPY.Close < spySma10))
+signal <- !((df$cue > unrate12) & (df$SPY.Close < spySma10))
 
-stratRets <- lag(signal, 1) * spyRets
 
-stratStats(stratRets)
-stratStats(spyRets)
-charts.PerformanceSummary(stratRets)
-monyear(index(df))
-yearmon(df)
+sp <- lag(signal, 1) *spyRets
+up <- lag(signal, 1) *uproRets
+uptmfSig <- lag(signal, 2) *.5 * uproRets + lag(signal, 2) *.5 * tmfRets 
+bhuptmf <- .5 * uproRets + .5 * tmfRets 
+
+
+rets <- na.omit(cbind(spyRets, uproRets, sp, up,uptmfSig, bhuptmf))
+names(rets) <- c("BHspy", "BHupro", "spySig", "uproSig", "uptmfSig", "BHuptmf")
+
+stratStats(rets)
+charts.PerformanceSummary(rets)
+
