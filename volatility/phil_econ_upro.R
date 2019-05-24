@@ -49,12 +49,14 @@ cue <- xts(cue$value, order.by = cue$date)
 
 plot(cue,grid.ticks.on = "years")
 
-getSymbols("SPY")
-getSymbols("UPRO")
-uproRets <- Return.calculate(Cl(UPRO))
-spyRets <- Return.calculate(Cl(SPY))
+#getSymbols("VFINX", from = "2000-12-01")
+#getSymbols("UPRO")
 
 
+spy <- read.csv("spyprice.csv", skip = 510, nrows = 7681)
+names(spy) <- c("date", "price")
+spy$date <- as.Date(spy$date, format = "%d-%b-%Y")
+spy <- xts(spy$price, order.by = spy$date)
 
 uproRets <- xts(read.zoo("UPROSIM.csv", header=TRUE, sep=",", format="%m/%d/%Y", index.column = 1))
 uproRets <- uproRets[,1]
@@ -64,20 +66,21 @@ tmfRets <- xts(read.zoo("TMFSIM.csv", header=TRUE, sep=",", format="%m/%d/%Y"))
 tmfRets<- tmfRets [,1]
 
 
+#uproRets <- Return.calculate(Cl(UPRO))
+spyRets <- Return.calculate(spy)
 
 
 
-
-df <- merge(Cl(SPY), cue, fill = NA )
+df <- merge(spy, cue, fill = NA )
 df <- na.locf(df)
 
-df <- df[index(df) > min(index(Cl(SPY))),]
-spySma10 <- SMA(df$SPY.Close, n = 22*12)
+df <- df[index(df) > min(index(spy)),]
+spySma10 <- SMA(df$spy, n = 22*12)
 unrate12 <- SMA(df$cue, n = 22*10)
 
 # Buy when unemployment is below its 12 mo moving average
 # 
-signal <- !((df$cue > unrate12) & (df$SPY.Close < spySma10))
+signal <- !((df$cue > unrate12) & (df$spy < spySma10))
 
 
 sp <- lag(signal, 1) *spyRets
@@ -86,9 +89,11 @@ uptmfSig <- lag(signal, 2) *.5 * uproRets + lag(signal, 2) *.5 * tmfRets
 bhuptmf <- .5 * uproRets + .5 * tmfRets 
 
 
-rets <- na.omit(cbind(spyRets, uproRets, sp, up,uptmfSig, bhuptmf))
+rets <- cbind(spyRets, uproRets, sp, up,uptmfSig, bhuptmf)
 names(rets) <- c("BHspy", "BHupro", "spySig", "uproSig", "uptmfSig", "BHuptmf")
 
 stratStats(rets)
 charts.PerformanceSummary(rets)
 
+knitr::kable(stratStats(rets))
+                         
