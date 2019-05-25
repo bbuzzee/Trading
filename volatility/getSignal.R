@@ -1,8 +1,8 @@
 require(downloader)
 require(quantmod)
 require(mailR)
-
 require(htmlTable)
+require(PerformanceAnalytics)
 # mailR requires 32 bit R and java be installed
 
 library(rJava)
@@ -46,19 +46,16 @@ getSignal <- function(){
   
   #================================ TTO SIGNAL ===================================
   
-  svxyOp <- CalculateReturns(Op(SVXY))
-  vxxOp <- CalculateReturns(Op(VXX))
-  
+  getSymbols("SPY")
+
   vol2 <- rollapply(Cl(SPY), FUN = sd.annualized, width = 2)
   
   df <- merge(vxv, vol2, join = "inner")
   colnames(df) <- c("", "", "", "vix3m", "vol2day")
   
   sigSvxyTTO <- EMA(df$vix3m - df$vol2day, n = 2) > 1 
-
-  retsTTO <- lag(sigSvxyTTO, 2) * svxyOp #   +  lag(sigVxxTTO, 2) * vxxOp
   
-  last_sig_tto <- tail(retsTTO, 5)
+  last_sig_tto <- tail(sigSvxyTTO, 5)
   
   action_tto  <- ifelse(coredata(last_sig_tto), "BUY", "SELL")
   
@@ -88,4 +85,4 @@ sendSignal <- function(address = "benbuzzee@gmail.com", body = "message"){
 }
 
 
-sendSignal(body = getSignal())
+# sendSignal(body = getSignal())
