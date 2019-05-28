@@ -11,6 +11,70 @@ library(rJava)
 getSignal <- function(){
 
   
+  # ====================================== PHIL ECON UPRO/TMF SIGNAL ======================================================
+  
+  getFedData <- function(tag = "DFF"){
+    
+    #=== pull data ===#
+    api.key <- "59f051c54cc49a42ef1f3ba3426792b8"
+    fred <- FredR::FredR(api.key)
+    
+    # REQUIRES global fred object to be loaded
+    dt <- fred$series.observations(tag)
+    dt <- dt %>% as.tibble()
+    
+    print("removing NAs")
+    # remove NA's
+    dt$value <- as.numeric(dt$value)
+    dt <- dt[!is.na(dt$value),]
+    
+    #=== clean dataframe up ===#
+    print("cleaning data")
+    # remove unneeded columns
+    dt <-  dt %>% dplyr::select(date, value) %>% dplyr::mutate(date = as.Date(date))
+    
+    # round all dates to nearest month
+    dt$date <- dt$date %>% lubridate::round_date(unit = "month")
+    
+    # for each month only retain median value
+    dt <- dt %>% dplyr::group_by(date) %>% dplyr::summarize(value = median(value))
+    
+    return(dt)
+    
+  }
+  
+  # ======== UNEMPLOYMENT ==========
+  
+  cue <- getFedData(tag = "UNRATE")
+  cue <- xts(cue$value, order.by = cue$date)
+  
+  
+  # ========= SPY ===========
+  
+  getSymbols("VFINX", from = "2000-12-01")
+  spy <- Cl(VFINX)
+  names(spy) <- "spy"
+  
+  
+  # ========= SIGNAL ===========
+  
+  df <- merge(spy, cue, fill = NA)
+  df <- na.locf(df)
+  
+  df <- df[index(df) > min(index(spy)),]
+  spySma10 <- EMA(df$spy, n = 22*12)
+  unrate12 <- EMA(df$cue, n = 22*12)
+  
+  # Buy when unemployment is below its 12 mo moving average
+  signal_phil <- !((df$cue > unrate12) & (df$spy < spySma10))
+  
+  last_sig_phil <- tail(signal_phil, 5)
+
+  action <- ifelse(coredata(last_sig_phil), "BUY", "SELL")
+  
+  table <- data.frame(index(last_sig_phil), action)
+
+  
   
   # ====================================== QUANTSTRATTRADER STRAT ======================================================
   # RETRIEVE THE DATA
@@ -38,7 +102,7 @@ getSignal <- function(){
   
   action <- ifelse(coredata(last_sig), "BUY", "SELL")
 
-  table <- data.frame(index(last_sig), action)
+  table <- cbind(index(last_sig), action, table)
   
   
   
@@ -61,7 +125,7 @@ getSignal <- function(){
   
   table <- cbind(data.frame(index(last_sig_tto), action_tto), table)
   
-  names(table) <- c("DateTTO", "ActionTTO", "DateQR", "ActionQR")
+  names(table) <- c("DateTTO", "ActionTTO", "DateQR", "ActionQR", "DateUpro", "ActionUpro")
   
   body <- htmlTable(table, rnames = FALSE)
   
@@ -69,7 +133,7 @@ getSignal <- function(){
 
 }
 
-# getSignal()
+# d <-  getSignal()
 
 
 sendSignal <- function(address = "benbuzzee@gmail.com", body = "message"){
