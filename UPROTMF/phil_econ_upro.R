@@ -1,5 +1,12 @@
-require(quantmod)
-require(PerformanceAnalytics)
+# This script combines a long-only UPRO/TMF strategy with a growth-trend timing strategy outlined on the
+# philosophical economics blog.
+# For more information see: http://www.philosophicaleconomics.com/2016/02/uetrend/
+# And https://www.bogleheads.org/forum/viewtopic.php?f=10&t=272007
+
+
+# make sure to install all these packages before attempting to run this code.
+library(quantmod)
+library(PerformanceAnalytics)
 library(tidyverse)
 library(FredR)
 
@@ -32,6 +39,8 @@ getFedData <- function(tag = "DFF"){
   return(dt)
   
 }
+
+
 
 stratStats <- function(rets) {
   stats <- rbind(table.AnnualizedReturns(rets), maxDrawdown(rets))
