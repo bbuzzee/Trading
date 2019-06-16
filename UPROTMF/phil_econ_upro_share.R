@@ -43,16 +43,32 @@ stratStats <- function(rets) {
 # you should have them all downloaded in your working directory
 # with the same names I used (including same capitalization)
 
+# RETAIL SALES GROWTH YOY #
+
+
+retail <- read.csv("retail.csv", header = TRUE, na.strings = ".")
+names(retail) <- c("date", "sales_current", "sales_hist")
+
+# if there is a current value use it, else use historical measure
+retail <- retail %>% mutate(sales = ifelse(is.na(retail$sales_current),
+                                           retail$sales_hist/100,
+                                           retail$sales_current/100)) %>% select(date, sales)
+
+# date isn't read in as a Date datatype, so we need to convert it.
+retail$date <- as.Date(retail$date, format = "%Y-%m-%d")
+# We don't see the current numbers -- only the previous months
+retail$sales <- lag(retail$sales)
+# xts objects make time series manipulations/analysis easier
+# so we'll convert all our data to xts objects
+retail <- xts(retail$sales, order.by = retail$date)
 
 
 # CIVILIAN UNEMPLOYMENT #
 # Downloaded from federal reserve at https://fred.stlouisfed.org/series/UNRATE/
 
 cue <- read.csv("UNRATE.csv", header=TRUE)
-# date isn't read in as a Date datatype, so we need to convert it.
 cue$DATE <- as.Date(cue$DATE, format = "%Y-%m-%d")
-# xts objects make time series manipulations/analysis easier
-# so we'll convert all our data to xts objects
+cue$UNRATE <- lag(cue$UNRATE)
 cue <- xts(cue$UNRATE, order.by = cue$DATE)
 
 # plot(cue, grid.ticks.on = "years")
@@ -95,7 +111,7 @@ tmfRets <- xts(tmfRets$return, order.by = tmfRets$date)
 
 
 # we will use this dataframe to compute our signal, merges by date by default
-df <- merge(spy, cue, fill = NA )
+df <- merge(spy, cue, retail, fill = NA )
 
 # unemployment numbers are monthly, so we need to "fill in" the unemployment rate to the rest of the days
 # the na.locf function does this
@@ -118,8 +134,8 @@ unrate12 <- SMA(df$cue, n = 22*12)
 
 # SELL when unemployment is above its moving average AND spy is below its respective MA
 # Otherwise be long
-signal <- !((df$cue > unrate12) & (df$spy < spySma10))
-
+signal <- !((df$cue > unrate12 | df$retail <= 0) & (df$spy < spySma10))
+#signal <- !((df$cue > unrate12) & (df$spy < spySma10))
 
 #=====================================================
 # Calculate returns of various strategies
@@ -136,7 +152,7 @@ spSig <- lag(signal, 2) * spyRets
 upSig <- lag(signal, 2) * uproRets
 
 # go 50/50 upro/tmf at signal
-uptmfSig <- lag(signal, 2)*.5*uproRets + lag(signal, 2)*.5*tmfRets 
+uptmfSig <- lag(signal, 2)*.5*uproRets + .5*tmfRets 
 
 # buy and hold 50/50 upro/tmf
 bhuptmf <- .5*uproRets + .5*tmfRets 

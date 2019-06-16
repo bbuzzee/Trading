@@ -18,12 +18,12 @@ getSignal <- function(){
   getFedData <- function(tag = "DFF"){
     
     #=== pull data ===#
-    #api.key <- "bea3df08931786951992bd042f7b2254"
-    #fredr_set_key(api.key)
+    api.key <- "bea3df08931786951992bd042f7b2254"
+    fredr_set_key(api.key)
     
     # REQUIRES global fred object to be loaded
     dt <- fredr(tag)
-    dt <- dt %>% as.tibble()
+    dt <- dt %>% as_tibble()
     
     print("removing NAs")
     # remove NA's
@@ -50,7 +50,7 @@ getSignal <- function(){
   cue <- getFedData(tag = "UNRATE")
   cue <- xts(cue$value, order.by = cue$date)
   
-  
+  # ======== RETAIL ========== 
   # ========= SPY ===========
   
   getSymbols("VFINX", from = "2000-12-01")
@@ -151,4 +151,4 @@ sendSignal <- function(address = "benbuzzee@gmail.com", body = "message"){
 }
 
 
-sendSignal(body = getSignal())
+# sendSignal(body = getSignal())
