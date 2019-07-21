@@ -8,17 +8,17 @@
 library(quantmod)
 library(PerformanceAnalytics)
 library(tidyverse)
-library(FredR)
+library(fredr)
 
 getFedData <- function(tag = "DFF"){
   
   #=== pull data ===#
-  api.key <- "59f051c54cc49a42ef1f3ba3426792b8"
-  fred <- FredR::FredR(api.key)
+  api.key <- "bea3df08931786951992bd042f7b2254"
+  fredr_set_key(api.key)
   
   # REQUIRES global fred object to be loaded
-  dt <- fred$series.observations(tag)
-  dt <- dt %>% as.tibble()
+  dt <- fredr(tag)
+  dt <- dt %>% as_tibble()
   
   print("removing NAs")
   # remove NA's

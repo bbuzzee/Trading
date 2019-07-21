@@ -65,7 +65,7 @@ getSignal <- function(){
   
   df <- df[index(df) > min(index(spy)),]
   spySma10 <- EMA(df$spy, n = 22*12)
-  unrate12 <- EMA(df$cue, n = 22*12)
+  unrate12 <- EMA(df$cue, n = 22*10)
   
   # Buy when unemployment is below its 12 mo moving average
   signal_phil <- !((df$cue > unrate12) & (df$spy < spySma10))

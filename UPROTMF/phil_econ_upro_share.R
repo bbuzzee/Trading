@@ -126,8 +126,8 @@ df <- df[index(df) > min(index(spy)),]
 #===================================================== 
 
 # compute simple moving averages, 22 trading days per month
-spySma10 <- SMA(df$spy, n = 22*10)
-unrate12 <- SMA(df$cue, n = 22*12)
+spySma10 <- EMA(df$spy, n = 22*10)
+unrate12 <- EMA(df$cue, n = 22*12)
 
 # Our signal is going to be a dated vector
 # Since it is an xts object, when we multiply by returns it defaults to same date comparisons
@@ -152,7 +152,7 @@ spSig <- lag(signal, 2) * spyRets
 upSig <- lag(signal, 2) * uproRets
 
 # go 50/50 upro/tmf at signal
-uptmfSig <- lag(signal, 2)*.5*uproRets + .5*tmfRets 
+uptmfSig <- lag(signal, 2)*.67*uproRets + .33*tmfRets
 
 # buy and hold 50/50 upro/tmf
 bhuptmf <- .5*uproRets + .5*tmfRets 

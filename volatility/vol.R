@@ -58,15 +58,18 @@ ma_avg <- mean(c(maLong, ma125, ma150))
 svxyQR <- vix3mVxmt < 1 & vix3mVxmt < maLong 
 vxxQR <- vix3mVxmt > 1 & ma_avg > 1
 
+plot(tail(vix3mVxmt, 252))
+lines(maLong, col = "red")
+
 retsSvxy <- lag(svxyQR, 2) * svxyRets 
 retsXivh <- lag(svxyQR, 2) * xivhRets
 retsLev3 <- .5*uproRets + .5 * tmfRets
 retsLev2 <- .5*ssoRets + .5 * ubtRets
-retsPort3 <- .5*retsTTO + .5 * retsLev3
+retsPort3 <- .5*retsSvxy + .5 * retsLev3
 retsPort2 <- .5*retsTTO + .5 * retsLev2
 
 compare1 <- na.omit(cbind(retsTTO, retsLev3, retsLev2, retsPort3, spyRets))
-names(compare1) <- c("SVXY", "UPRO", "Vol-UPRO-TMF", "SPY")
+names(compare1) <- c("SVXY", "UPRO","2x", "Vol-UPRO-TMF", "SPY")
 
 # compare1 <- tail(compare1, 300)
 charts.PerformanceSummary(compare1)
