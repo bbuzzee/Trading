@@ -3,6 +3,8 @@ require(quantmod)
 require(mailR)
 require(htmlTable)
 require(PerformanceAnalytics)
+require(fredr)
+library(tidyverse)
 # mailR requires 32 bit R and java be installed
 
 library(rJava)
@@ -16,12 +18,12 @@ getSignal <- function(){
   getFedData <- function(tag = "DFF"){
     
     #=== pull data ===#
-    api.key <- "59f051c54cc49a42ef1f3ba3426792b8"
-    fred <- FredR::FredR(api.key)
+    api.key <- "bea3df08931786951992bd042f7b2254"
+    fredr_set_key(api.key)
     
     # REQUIRES global fred object to be loaded
-    dt <- fred$series.observations(tag)
-    dt <- dt %>% as.tibble()
+    dt <- fredr(tag)
+    dt <- dt %>% as_tibble()
     
     print("removing NAs")
     # remove NA's
@@ -48,7 +50,7 @@ getSignal <- function(){
   cue <- getFedData(tag = "UNRATE")
   cue <- xts(cue$value, order.by = cue$date)
   
-  
+  # ======== RETAIL ========== 
   # ========= SPY ===========
   
   getSymbols("VFINX", from = "2000-12-01")
@@ -63,7 +65,7 @@ getSignal <- function(){
   
   df <- df[index(df) > min(index(spy)),]
   spySma10 <- EMA(df$spy, n = 22*12)
-  unrate12 <- EMA(df$cue, n = 22*12)
+  unrate12 <- EMA(df$cue, n = 22*10)
   
   # Buy when unemployment is below its 12 mo moving average
   signal_phil <- !((df$cue > unrate12) & (df$spy < spySma10))
