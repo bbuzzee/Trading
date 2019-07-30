@@ -15,23 +15,25 @@ download("http://www.cboe.com/publish/ScheduledTask/MktData/datahouse/vix6mdaily
 vxv <- xts(read.zoo("vxvData.csv", header=TRUE, sep=",", format="%m/%d/%Y", skip=2))
 vxmt <- xts(read.zoo("vxmtData.csv", header=TRUE, sep=",", format="%m/%d/%Y", skip=2))
 
-getSymbols("SVXY", src = "yahoo")
-getSymbols("SPY")
-getSymbols("XIVH")
-getSymbols("UPRO")
-getSymbols("TMF")
-getSymbols("VXX")
-getSymbols("SSO")
-getSymbols("UBT")
+
+symbs <- c("SVXY",
+           "SPY",
+           "XIVH",
+           "UPRO",
+           "TMF",
+           "ZIV",
+           "VXX")
+
+getSymbols(symbs)
+
 
 spyRets <- Return.calculate(Cl(SPY))
 svxyRets <- Return.calculate(Cl(SVXY))
 xivhRets <- Return.calculate(Cl(XIVH))
 uproRets <- Return.calculate(Cl(UPRO))
 tmfRets <- Return.calculate(Cl(TMF))
-vxxRets <- Return.calculate(Cl(VXX))
-ssoRets <- Return.calculate(Cl(SSO))
-ubtRets <- Return.calculate(Cl(UBT))
+zivRets <- Return.calculate(Cl(ZIV))
+vxxRets <- Return.calculate(Cl(VXZ))
 
 vix3mVxmt <- Cl(vxv)/Cl(vxmt)
 
@@ -49,57 +51,50 @@ stratStats <- function(rets) {
 }
 
 # QUANT R TRADER
-maLong <- SMA(vix3mVxmt, 60)
-ma125 <- SMA(vix3mVxmt, 125)
-ma150 <- SMA(vix3mVxmt, 150)
+ma30 <- EMA(vix3mVxmt, 30)
+ma60 <- EMA(vix3mVxmt, 60)
+ma200 <- EMA(vix3mVxmt, 90)
 
-ma_avg <- mean(c(maLong, ma125, ma150))
+plot(tail(vix3mVxmt, 252))
+lines(ma60, col = "blue", lwd = 2)
+lines(ma200, col = "green", lwd = 2)
+points(svxyQR*1.05, col = "green", pch = 15)
 
-svxyQR <- vix3mVxmt < 1 & vix3mVxmt < maLong 
-vxxQR <- vix3mVxmt > 1 & ma_avg > 1
 
-retsSvxy <- lag(svxyQR, 2) * svxyRets 
-retsXivh <- lag(svxyQR, 2) * xivhRets
-retsLev3 <- .5*uproRets + .5 * tmfRets
-retsLev2 <- .5*ssoRets + .5 * ubtRets
-retsPort3 <- .5*retsTTO + .5 * retsLev3
-retsPort2 <- .5*retsTTO + .5 * retsLev2
 
-compare1 <- na.omit(cbind(retsTTO, retsLev3, retsLev2, retsPort3, spyRets))
-names(compare1) <- c("SVXY", "UPRO", "Vol-UPRO-TMF", "SPY")
+svxyQR <- (vix3mVxmt < 1) & (vix3mVxmt < ma60)
+svxyQR2 <- (vix3mVxmt < 1) & (vix3mVxmt < ma60) & (ma60 > .9)
+zivQR <-  (vix3mVxmt < 1) & (vix3mVxmt < ma60) & (ma60 < .9)
 
-# compare1 <- tail(compare1, 300)
-charts.PerformanceSummary(compare1)
-stratStats(compare1)
+
+retsSvxy <- lag(svxyQR, 2) * svxyRets
+retsZiv <- lag(svxyQR, 2) * zivRets
+retsVXX <- lag(!zivQR, 2) * vxxRets
+retsSvZv <-  lag(svxyQR2, 2) * svxyRets + lag(zivQR, 2) * zivRets
+retsUptmf <- .5*uproRets + .5 * tmfRets
+retsCombo <- .5*retsSvZv + .5 * retsUptmf
+
+compare1 <- na.omit(cbind(retsSvxy, retsZiv, retsVXX, retsSvZv, retsUptmf, spyRets, retsCombo))
+names(compare1) <- c("SVXY", "ZIV", "VXX", "SVZIV", "UPROTMF", "SPY", "Combo")
+
+yrs <- as.character(seq(from = 2011, to = 2017))
+
+#compare1 <- compare1["2016"]
+charts.PerformanceSummary(tail(compare1, 252*2))
+stratStats(tail(compare1, 252*2))
 
 tail(svxyQR)
 
-# TTO
-
-svxyOp <- CalculateReturns(Op(SVXY))
-vxxOp <- CalculateReturns(Op(VXX))
-
-vol2 <- rollapply(Cl(SPY), FUN = sd.annualized, width = 2)
-
-df <- merge(vxv, vol2, join = "inner")
-colnames(df) <- c("", "", "", "vix3m", "vol2day")
-
-sigSvxyTTO <- EMA(df$vix3m - df$vol2day, n = 2) > 1 
-sigVxxTTO <- EMA(df$vix3m - df$vol2day, n = 2) < 1
-
-retsTTO <- lag(sigSvxyTTO, 2) * svxyOp #   +  lag(sigVxxTTO, 2) * vxxOp
-retsTTO <- lag(sigSvxyTTO, 2) * svxyOp #   +  lag(sigVxxTTO, 2) * vxxOp
-# retsTTO <- tail(retsTTO, 200)
-compare <- na.omit(cbind(spyRets, retsTTO))
-stratStats(compare)
-charts.PerformanceSummary(compare)
-
-tail(sigSvxyTTO)
-
-sum(!sigSvxyTTO, na.rm = T)/length(sigSvxyTTO)*252
-sum(!svxyQR, na.rm = T)/length(svxyQR)*252
+# LONG VOL STRATEGIES
 
 
+vxxQR1 <- (vix3mVxmt < 1) & (vix3mVxmt > ma60) & (ma60 < .9)
+vxxQR2 <- (vix3mVxmt > 1) & (vix3mVxmt > ma60)
+
+retsVol1 <- lag(vxxQR1, 2) * vxxRets
+retsVol2 <- lag(vxxQR2, 2) * vxxRets
 
 
+compare2 <- na.omit(cbind(retsVol1, retsVol2))
+stratStats(compare2)
 
