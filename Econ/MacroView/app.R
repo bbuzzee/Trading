@@ -84,15 +84,22 @@ ui <- navbarPage("MacroView",
                 
                 
                 #========= TAB TWO ===========#
-                tabPanel("Rates and Debt",
+                tabPanel("Misc",
                     
                     # one row of stacked plots     
                     fluidRow( 
                             column(6,
                                    
-                                   plotOutput("debtgdp"),
-                                   plotOutput("t10y3mPlot")
+                                   plotOutput("gldPlot"),
+                                   plotOutput("rratePlot")
+                                   ),
+                            
+                            column(6,
+                                   plotOutput("t10y3mPlot"),
+                                   plotOutput("debtgdpPlot")
+              
                                    )
+                  
                             ),
                     
                     
@@ -122,6 +129,7 @@ ui <- navbarPage("MacroView",
 server <- function(input, output) {
    
   #======= Retrieve Data =======#
+  print("Retrieving Data")
   
   CUE <- getFedData("UNRATE")
   RRS <- getFedData("RRSFS")
@@ -131,10 +139,12 @@ server <- function(input, output) {
   PGDP <- getFedData("GDPPOT")
   GDP <- getFedData("GDP")
   CDEBT <- getFedData("NCBDBIQ027S")/1000
-  
+  RRATE <- getFedData("DFII10")
+  GLD <- getFedData("GOLDAMGBD228NLBM")
   
   
   #======= DATA PREP =======#
+  print("Prepping Data")
   
   # unemployment MA
   ma10 <- SMA(CUE$value, n = 10)
@@ -153,7 +163,10 @@ server <- function(input, output) {
   
   DEBTGDP <- CDEBT/GDP
   
+  RRATE$zero <- 0
+  
   #======= LEADING INDICATOR PLOTS =======#
+  print("Creating Leading Inidcator Plots")
   
    # Unemployment Plot #
    output$cuePlot <- renderPlot({
@@ -188,7 +201,7 @@ server <- function(input, output) {
      lines(tail(GAP$zero, 4*as.numeric(input$mo)), col = "red", lwd = 3)
      
    })
-   
+
 
    
    
@@ -196,26 +209,43 @@ server <- function(input, output) {
    
    
    
-   #======= FINANCIAL MARKETS PLOTS =======#
+   #======= RATES N STUFF PLOTS =======#
+   print("Creating Rates Plots")
    
    # Yield Curve #
 
-   output$debtgdp <- renderPlot({
-     
-     plot(tail(DEBTGDP, 4*as.numeric(input$mo2)), main = "Corporate Debt to GDP")
+     output$debtgdpPlot <- renderPlot({
+       
+       plot(tail(DEBTGDP, 4*as.numeric(input$mo2)), main = "Corporate Debt to GDP")
+  
+       
+     })
+   
+     output$t10y3mPlot <- renderPlot({
+       
+       T10Y3M$zero <- 0
+       plot(tail(T10Y3M*10, 12*as.numeric(input$mo2)), main = "10 Year - 3 Month Treasury")
+       lines(tail(T10Y3M$zero, 22*12*as.numeric(input$mo2)), col = "red", lwd = 3)
+       
+     })
+   
+     output$rratePlot <- renderPlot({
+       
+       plot(tail(RRATE, 12*as.numeric(input$mo2)), main = "Real Interest Rates")
+       lines(tail(RRATE$zero, 12*as.numeric(input$mo2)), col = "red", lwd = 3 )
+       
+       
+     })
 
      
-   })
-   
-   output$t10y3mPlot <- renderPlot({
+     # output gap
+     output$gldPlot <- renderPlot({
+       
+       # gdp is quarterly measurement
+       plot(tail(GLD, 12*as.numeric(input$mo2)), main = "Gold Price")
+       
+     })
      
-     T10Y3M$zero <- 0
-     plot(tail(T10Y3M*10, 12*as.numeric(input$mo2)), main = "10 Year - 3 Month Treasury")
-     lines(tail(T10Y3M$zero, 22*12*as.numeric(input$mo2)), col = "red", lwd = 3)
-     
-   })
-
-   
 
    
 }
