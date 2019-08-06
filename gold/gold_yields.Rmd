@@ -10,41 +10,79 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(vars)
 library(xts)
+require(quantmod)
+
 
 gold <- read.csv("gold.csv", na.strings = ".")
-yields <- read.csv("real_yields.csv")
-dollar <- read.csv("dollar_daily.csv", na.strings = ".")
+names(gold) <- c("date", "price")
+gold$date <- as.Date(gold$date, format = "%Y-%m-%d")
+gold <- xts(gold$price, order.by = gold$date)
 
-df <- inner_join(yields, gold, by = "DATE") 
+getSymbols("GDX")
+gdxRets <- CalculateReturns(Cl(GDX))
 
-df <- left_join(df, dollar, by = "DATE")
 
-colnames(df) <- c("date", "yield", "gold_price", "dollar")
+getFedData <- function(tag = "DFF"){
+  
+  #=== pull data ===#
+  api.key <- "59f051c54cc49a42ef1f3ba3426792b8"
+  fred <- FredR::FredR(api.key)
+  
+  # REQUIRES global fred object to be loaded
+  dt <- fred$series.observations(tag)
+  dt <- dt %>% as.tibble()
+  
+  print("removing NAs")
+  # remove NA's
+  dt$value <- as.numeric(dt$value)
+  dt <- dt[!is.na(dt$value),]
+  
+  #=== clean dataframe up ===#
+  print("cleaning data")
+  # remove unneeded columns
+  dt <-  dt %>% dplyr::select(date, value) %>% dplyr::mutate(date = as.Date(date))
+  
+  # round all dates to nearest month
+  #dt$date <- dt$date %>% lubridate::round_date(unit = "month")
+  
+  # for each month only retain median value
+  #dt <- dt %>% dplyr::group_by(date) %>% dplyr::summarize(value = median(value))
+  
+  return(dt)
+  
+}
 
-df <- df %>% filter(!is.na(gold_price) & !is.na(dollar))
-# df$date <- as.Date(df$date, format = "%Y-%d-%m")
-df$date <- as.Date(format(df$date, format = "%Y-%m-%d"))
 
-df_ts <- as.xts(df[,-1], order.by = df$date)
+yields <- getFedData(tag = "DFII10")
+yields <- xts(yields$value, order.by = yields$date)
 
+
+df <- merge(yields, gold, join = "inner")
 ```
 
 
 ```{r}
-plot.xts(df_ts$yield, grid.ticks.on = "years", type = "l")
-plot.xts(df_ts$dollar, grid.ticks.on = "years", type = "l")
-plot.xts(df_ts$gold, grid.ticks.on = "years", type = "l")
+plot(log(gold), grid.ticks.on = "years")
+
+plot(Cl(GDX))
+
 ```
 ```{r}
 
-par(mfrow = c(2,2))
+sma <- SMA(df$yields, n = 22*12)
 
-acf(df$gold_price, lag.max = 1000)
-pacf(df$gold_price)
+plot(yields, grid.ticks.on = "years")
+lines(sma)
 
 
-acf(df$yield, lag.max = 1000)
-pacf(df$yield, lag.max = 1000)
+goldRets <- CalculateReturns(gold)
+plot(goldRets)
+signal <- yields < sma
+
+
+rets <- lag(signal, 2) * goldRets
+
+stratStats(tail(rets, 252*10))
 ```
 
 ```{r}

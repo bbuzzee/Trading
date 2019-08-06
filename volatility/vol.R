@@ -33,7 +33,7 @@ xivhRets <- Return.calculate(Cl(XIVH))
 uproRets <- Return.calculate(Cl(UPRO))
 tmfRets <- Return.calculate(Cl(TMF))
 zivRets <- Return.calculate(Cl(ZIV))
-vxxRets <- Return.calculate(Cl(VXZ))
+vxxRets <- Return.calculate(Cl(VXX))
 
 vix3mVxmt <- Cl(vxv)/Cl(vxmt)
 
@@ -55,7 +55,7 @@ ma30 <- EMA(vix3mVxmt, 30)
 ma60 <- EMA(vix3mVxmt, 60)
 ma200 <- EMA(vix3mVxmt, 90)
 
-plot(tail(vix3mVxmt, 252))
+plot(tail(vix3mVxmt, 22*6))
 lines(ma60, col = "blue", lwd = 2)
 lines(ma200, col = "green", lwd = 2)
 points(svxyQR*1.05, col = "green", pch = 15)
@@ -80,8 +80,8 @@ names(compare1) <- c("SVXY", "ZIV", "VXX", "SVZIV", "UPROTMF", "SPY", "Combo")
 yrs <- as.character(seq(from = 2011, to = 2017))
 
 #compare1 <- compare1["2016"]
-charts.PerformanceSummary(tail(compare1, 252*2))
-stratStats(tail(compare1, 252*2))
+charts.PerformanceSummary(tail(compare1, 252*8))
+stratStats(tail(compare1, 252*8))
 
 tail(svxyQR)
 
