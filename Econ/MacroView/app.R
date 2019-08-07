@@ -147,7 +147,7 @@ server <- function(input, output) {
   print("Prepping Data")
   
   # unemployment MA
-  ma10 <- SMA(CUE$value, n = 10)
+  ma10 <- SMA(CUE$value, n = 12)
   
   # indpro yoy calc and zero line
   INDPRO <- (INDPRO - lag(INDPRO, 12)) / lag(INDPRO, 12)
