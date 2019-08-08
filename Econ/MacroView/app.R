@@ -173,7 +173,7 @@ server <- function(input, output) {
   
      plot(tail(CUE, 12*as.numeric(input$mo)), main = "Unemployment Rate")
      lines(tail(ma10, 12*as.numeric(input$mo)), col = "red", lwd = 2)
-     addLegend(legend.loc = "topright", legend.names = c("Values", "SMA10"), lty = c(1,1), col =  c("black","red"))
+     addLegend(legend.loc = "topright", legend.names = c("Values", "SMA12"), lty = c(1,1), col =  c("black","red"))
      
    })
    
