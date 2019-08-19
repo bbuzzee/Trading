@@ -147,15 +147,17 @@ server <- function(input, output) {
   print("Prepping Data")
   
   # unemployment MA
-  ma10 <- SMA(CUE$value, n = 12)
+  cuema10 <- SMA(CUE$value, n = 12)
   
   # indpro yoy calc and zero line
-  INDPRO <- (INDPRO - lag(INDPRO, 12)) / lag(INDPRO, 12)
+  INDPRO <- (INDPRO - lag(INDPRO, 12)) / lag(INDPRO, 12)*100
   INDPRO$zero <- 0
+  indproma10 <- SMA(na.trim(INDPRO$value), n = 18)
   
   # real retail sales yoy calc and zero line
-  RRS <- (RRS - lag(RRS, 12)) / lag(RRS, 12)
+  RRS <- (RRS - lag(RRS, 12)) / lag(RRS, 12)*100
   RRS$zero <- 0
+  rrsma10 <- SMA(na.trim(RRS$value), n = 18)
   
   # CALC GDP OUTPUT GAP RATIO
   GAP <- 100*(RGDP - PGDP)/RGDP
@@ -172,7 +174,7 @@ server <- function(input, output) {
    output$cuePlot <- renderPlot({
   
      plot(tail(CUE, 12*as.numeric(input$mo)), main = "Unemployment Rate")
-     lines(tail(ma10, 12*as.numeric(input$mo)), col = "red", lwd = 2)
+     lines(tail(cuema10, 12*as.numeric(input$mo)), col = "blue", lwd = 1)
      addLegend(legend.loc = "topright", legend.names = c("Values", "SMA12"), lty = c(1,1), col =  c("black","red"))
      
    })
@@ -180,16 +182,22 @@ server <- function(input, output) {
    # Industrial Production Index #
    output$indproPlot <- renderPlot({
      
-     plot(tail(INDPRO*100, 12*as.numeric(input$mo)), main = "Industrial Prod. Index, % Change YoY")
+     plot(tail(INDPRO, 12*as.numeric(input$mo)), main = "Industrial Prod. Index, % Change YoY")
+     lines(tail(indproma10, 12*as.numeric(input$mo)), col = "blue")
      lines(tail(INDPRO$zero, 12*as.numeric(input$mo)), col = "red", lwd = 3)
+
+     addLegend(legend.loc = "topright", legend.names = c("Values", "SMA18"), lty = c(1,1), col =  c("black","red"))
+     
      
    })
    
    # Retail Sales Plot #
    output$rrsPlot <- renderPlot({
   
-     plot(tail(RRS*100, 12*as.numeric(input$mo)), main = "Real Retail Sales, % Change YoY")
+     plot(tail(RRS, 12*as.numeric(input$mo)), main = "Real Retail Sales, % Change YoY")
+     lines(rrsma10, col = "blue")
      lines(tail(RRS$zero, 12*as.numeric(input$mo)), col = "red", lwd = 3)
+     addLegend(legend.loc = "topright", legend.names = c("Values", "SMA18"), lty = c(1,1), col =  c("black","red"))
      
    })
    
@@ -253,3 +261,6 @@ server <- function(input, output) {
 # Run the application 
 shinyApp(ui = ui, server = server)
 
+
+# plot(RRS)
+# lines(rrsma10)

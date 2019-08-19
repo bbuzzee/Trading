@@ -55,9 +55,9 @@ ma30 <- EMA(vix3mVxmt, 30)
 ma60 <- EMA(vix3mVxmt, 60)
 ma200 <- EMA(vix3mVxmt, 90)
 
-plot(tail(vix3mVxmt, 22*6))
+plot(tail(vix3mVxmt, 22*50))
 lines(ma60, col = "blue", lwd = 2)
-lines(ma200, col = "green", lwd = 2)
+# lines(ma200, col = "green", lwd = 2)
 points(svxyQR*1.05, col = "green", pch = 15)
 
 
@@ -69,19 +69,19 @@ zivQR <-  (vix3mVxmt < 1) & (vix3mVxmt < ma60) & (ma60 < .9)
 
 retsSvxy <- lag(svxyQR, 2) * svxyRets
 retsZiv <- lag(svxyQR, 2) * zivRets
-retsVXX <- lag(!zivQR, 2) * vxxRets
+#retsVXX <- lag(!zivQR, 2) * vxxRets
 retsSvZv <-  lag(svxyQR2, 2) * svxyRets + lag(zivQR, 2) * zivRets
 retsUptmf <- .5*uproRets + .5 * tmfRets
 retsCombo <- .5*retsSvZv + .5 * retsUptmf
 
-compare1 <- na.omit(cbind(retsSvxy, retsZiv, retsVXX, retsSvZv, retsUptmf, spyRets, retsCombo))
-names(compare1) <- c("SVXY", "ZIV", "VXX", "SVZIV", "UPROTMF", "SPY", "Combo")
+compare1 <- na.omit(cbind(retsSvxy, retsZiv, retsSvZv, retsUptmf, spyRets, retsCombo))
+names(compare1) <- c("SVXY", "ZIV", "SVZIV", "UPROTMF", "SPY", "Combo")
 
 yrs <- as.character(seq(from = 2011, to = 2017))
 
 #compare1 <- compare1["2016"]
-charts.PerformanceSummary(tail(compare1, 252*8))
-stratStats(tail(compare1, 252*8))
+charts.PerformanceSummary(compare1)
+stratStats(tail(compare1, 252*3))
 
 tail(svxyQR)
 
