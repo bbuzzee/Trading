@@ -152,12 +152,12 @@ server <- function(input, output) {
   # indpro yoy calc and zero line
   INDPRO <- (INDPRO - lag(INDPRO, 12)) / lag(INDPRO, 12)*100
   INDPRO$zero <- 0
-  indproma10 <- SMA(na.trim(INDPRO$value), n = 18)
+  indproma10 <- SMA(na.trim(INDPRO$value), n = 12)
   
   # real retail sales yoy calc and zero line
   RRS <- (RRS - lag(RRS, 12)) / lag(RRS, 12)*100
   RRS$zero <- 0
-  rrsma10 <- SMA(na.trim(RRS$value), n = 18)
+  rrsma10 <- SMA(na.trim(RRS$value), n = 12)
   
   # CALC GDP OUTPUT GAP RATIO
   GAP <- 100*(RGDP - PGDP)/RGDP
@@ -186,7 +186,7 @@ server <- function(input, output) {
      lines(tail(indproma10, 12*as.numeric(input$mo)), col = "blue")
      lines(tail(INDPRO$zero, 12*as.numeric(input$mo)), col = "red", lwd = 3)
 
-     addLegend(legend.loc = "topright", legend.names = c("Values", "SMA18"), lty = c(1,1), col =  c("black","red"))
+     addLegend(legend.loc = "topright", legend.names = c("Values", "SMA12"), lty = c(1,1), col =  c("black","red"))
      
      
    })
@@ -197,7 +197,7 @@ server <- function(input, output) {
      plot(tail(RRS, 12*as.numeric(input$mo)), main = "Real Retail Sales, % Change YoY")
      lines(rrsma10, col = "blue")
      lines(tail(RRS$zero, 12*as.numeric(input$mo)), col = "red", lwd = 3)
-     addLegend(legend.loc = "topright", legend.names = c("Values", "SMA18"), lty = c(1,1), col =  c("black","red"))
+     addLegend(legend.loc = "topright", legend.names = c("Values", "SMA12"), lty = c(1,1), col =  c("black","red"))
      
    })
    
